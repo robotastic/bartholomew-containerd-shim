@@ -29,6 +29,79 @@ Available Routes:
 
 Now you can point your web browser to `http://localhost:3000/` and see your new Bartholomew site.
 
+
+## Running using WASM Containerd Shim and K3D
+
+This approach lets you run you Bartholomew site in Kubernetes. The [Containerd WASM Shims](https://github.com/deislabs/containerd-wasm-shims/tree/main) from Deis Labs
+makes this possible. 
+
+I have lightly adapted their [Quickstart](https://github.com/deislabs/containerd-wasm-shims/blob/main/containerd-shim-spin-v1/quickstart.md), if you get lost
+check back there.
+
+### Pre-requisites
+Before you begin, you need to have the following installed:
+
+- [Docker](https://docs.docker.com/install/) version 4.13.1 (90346) or later with [containerd enabled](https://docs.docker.com/desktop/containerd/)
+- [k3d](https://k3d.io/v5.4.6/#installation)
+- [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl)
+
+### Start and configure a k3d cluster
+
+Start a k3d cluster with the wasm shims already installed:
+
+```bash
+k3d cluster create wasm-cluster --image ghcr.io/deislabs/containerd-wasm-shims/examples/k3d:v0.3.3 -p "3000:3000@loadbalancer" -p "8081:80@loadbalancer" --agents 1 --registry-create mycluster-registry:12345
+```
+
+This also starts up a local container registry for the cluster to use. Docker can get to it at: `localhost:12345` and inside deployment YAML it is at: `mycluster-registry:12345`.
+
+Apply RuntimeClass for spin applications to use the spin wasm shim:
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/deislabs/containerd-wasm-shims/main/deployments/workloads/runtime.yaml
+```
+
+### Create a container image for the Site
+
+Use `docker` to build the container image and push it to the k3d registry:
+
+```bash
+docker buildx build --platform=wasi/wasm -t localhost:12345/bart-shim .
+docker push localhost:12345/bart-shim:latest
+```
+
+### Deploy the application
+
+Deploy the application and confirm it is running:
+
+```bash
+kubectl apply -f workloads/workload.yaml
+```
+
+### Clean up
+
+Remove the sample application:
+
+```bash
+kubectl delete -f workloads/workload.yaml
+```
+
+Delete the cluster:
+
+```bash
+k3d cluster delete wasm-cluster
+```
+
+## Helpful debugging commands:
+
+### Get all log events
+
+`kubectl get events  --all-namespaces`
+
+### Get all the Pods / Containers
+
+`kubectl get pods --all-namespaces`
+
 ## About the License
 
 This repository uses CC0. To the greatest extent possible, you are free to use this content however you want.
