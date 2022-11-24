@@ -50,7 +50,7 @@ Before you begin, you need to have the following installed:
 Start a k3d cluster with the wasm shims already installed:
 
 ```bash
-k3d cluster create wasm-cluster --image ghcr.io/deislabs/containerd-wasm-shims/examples/k3d:v0.3.3 -p "3000:3000@loadbalancer" -p "8081:80@loadbalancer" --agents 1 --registry-create mycluster-registry:12345
+k3d cluster create wasm-cluster --image ghcr.io/deislabs/containerd-wasm-shims/examples/k3d:v0.3.3 -p "8080:80@loadbalancer" --agents 1 --registry-create mycluster-registry:12345
 ```
 
 This also starts up a local container registry for the cluster to use. Docker can get to it at: `localhost:12345` and inside deployment YAML it is at: `mycluster-registry:12345`.
@@ -69,6 +69,9 @@ Use `docker` to build the container image and push it to the k3d registry:
 docker buildx build --platform=wasi/wasm -t localhost:12345/bart-shim .
 docker push localhost:12345/bart-shim:latest
 ```
+
+*If you restart the cluster you will need to re-push the docker image back into the cluster. The registry that K3D sets up looks like it is temporary.*
+
 
 ### Deploy the application
 
